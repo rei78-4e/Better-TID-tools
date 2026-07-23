@@ -21,12 +21,15 @@
         606: false, 607: false, 608: true, 609: true, 610: false
     };
 
+    // Firefox は browser、Chrome は chrome を提供する
+    const extensionApi = globalThis.browser ?? globalThis.chrome;
+
     const banner = document.createElement("div");
     banner.id = "auto-dx-test-chrome-extension-banner";
     banner.className = "auto-dx-test-banner";
 
     const icon = document.createElement("img");
-    icon.src = chrome.runtime.getURL("icons/auto-dx-icon32.png");
+    icon.src = extensionApi.runtime.getURL("icons/auto-dx-icon32.png");
     icon.alt = "";
     icon.className = "auto-dx-test-banner-icon";
 

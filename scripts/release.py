@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update manifest.json, commit it, and create a release tag."""
+"""Update the manifests, commit them, and create a release tag."""
 
 from __future__ import annotations
 
@@ -12,6 +12,9 @@ from pathlib import Path
 
 
 VERSION_PATTERN = re.compile(r"^\d+(?:\.\d+){0,3}$")
+
+# Chrome uses manifest.json, Firefox gets manifest.firefox.json renamed at package time.
+MANIFEST_NAMES = ("manifest.json", "manifest.firefox.json")
 
 
 def parse_version(version: str) -> tuple[int, int, int, int]:
@@ -66,18 +69,28 @@ def main() -> int:
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[1]
-    manifest_path = repo_root / "manifest.json"
     tag_name = f"v{args.version}"
 
     try:
-        previous_version = update_manifest_version(manifest_path, args.version)
-        run_git(repo_root, "commit", "--only", "manifest.json", "-m", f"chore: release {tag_name}")
+        previous_versions = {
+            name: update_manifest_version(repo_root / name, args.version)
+            for name in MANIFEST_NAMES
+        }
+        previous_version = previous_versions[MANIFEST_NAMES[0]]
+        run_git(
+            repo_root,
+            "commit",
+            "--only",
+            *MANIFEST_NAMES,
+            "-m",
+            f"chore: release {tag_name}",
+        )
         run_git(repo_root, "tag", tag_name)
     except (ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
         print(f"release failed: {exc}", file=sys.stderr)
         return 1
 
-    print(f"Updated manifest.json: {previous_version} -> {args.version}")
+    print(f"Updated {', '.join(MANIFEST_NAMES)}: {previous_version} -> {args.version}")
     print(f"Created commit and tag: {tag_name}")
     return 0
 

@@ -1,0 +1,80 @@
+{
+  "manifest_version": 3,
+  "name": "Better-TID-tools",
+  "version": "1.5",
+  "description": "簡単なAAA出席入力・確認する機能、portal.tid.ac.jp ログイン自動リダイレクト、IT/DX テスト自動回答、Panopto 字幕ダウンロード を提供します。",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "better-tid-tools@uliboooo.github.io",
+      "strict_min_version": "128.0"
+    }
+  },
+
+  "host_permissions": [
+    "https://aaaportal.tid.ac.jp/*",
+    "https://tid.ap.panopto.com/*",
+    "*://itl.jikeigroup.net/*",
+    "*://itlexam.jikeigroup.net/*"
+  ],
+
+  "permissions": ["declarativeNetRequest"],
+
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "aaa_requests",
+        "enabled": true,
+        "path": "aaa_request_rules.json"
+      }
+    ]
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://aaaportal.tid.ac.jp/aa_web/portal/mt0010.aspx"],
+      "js": [
+        "content.js",
+        "enter-key-send.js",
+        "show-attendance-code.js",
+        "auto-show-attendance-page/config.js",
+        "auto-show-attendance-page/utils.js",
+        "auto-show-attendance-page/overlay.js",
+        "auto-show-attendance-page/redirect-ui.js",
+        "auto-show-attendance-page/extractor.js",
+        "auto-show-attendance-page/index.js",
+        "find-current-class.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://portal.tid.ac.jp/*"],
+      "js": ["portal-login.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://tid.ap.panopto.com/*"],
+      "js": ["panopto-caption-download.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://itl.jikeigroup.net/*", "*://itlexam.jikeigroup.net/*"],
+      "js": ["auto-dx-content.js"],
+      "css": ["auto-dx-banner.css"],
+      "run_at": "document_end"
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/auto-dx-icon32.png"],
+      "matches": ["*://itl.jikeigroup.net/*", "*://itlexam.jikeigroup.net/*"]
+    }
+  ],
+
+  "icons": {
+    "16": "icons/icon.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
