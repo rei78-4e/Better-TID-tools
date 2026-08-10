@@ -21,6 +21,40 @@
 //       以降のホバーはページ本来の onmouseover/onmouseout に委ねる
 // =====================================================================
 
+// Enter キーリスナーを追跡して授業切り替わり時の重複登録を防ぐ
+let _keydownListener = null;
+
+// -------------------------------------------------------
+// getAttendanceButtonFromBlock
+// 授業ブロック内から「出席パスワード入力」リンクを返す
+// 見つからなければ null を返す
+// -------------------------------------------------------
+function getAttendanceButtonFromBlock(block) {
+  for (const link of block.querySelectorAll("a.jugyo_link_style")) {
+    if (link.textContent.trim() === "出席パスワード入力") {
+      return link;
+    }
+  }
+  return null;
+}
+
+// -------------------------------------------------------
+// parseClassTimeRange
+// 授業ブロックの時刻文字列を [startMin, endMin] に変換する
+// 変換できない場合は null を返す
+// -------------------------------------------------------
+function parseClassTimeRange(block) {
+  const timeText = block.querySelector(".wschedule")?.textContent.trim();
+  if (!timeText) return null;
+
+  const match = timeText.match(/^(\d{2}):(\d{2})～(\d{2}):(\d{2})$/);
+  if (!match) return null;
+
+  const startMin = parseInt(match[1]) * 60 + parseInt(match[2]);
+  const endMin = parseInt(match[3]) * 60 + parseInt(match[4]);
+  return [startMin, endMin];
+}
+
 // -------------------------------------------------------
 // findCurrentClassAttendanceButton
 // 現在時刻から今日の授業を特定し、
@@ -62,29 +96,17 @@ function findCurrentClassAttendanceButton() {
 
   // 今日のセル内にある全授業ブロック（.wscheduleWaku）を順に確認する
   for (const block of todayCell.querySelectorAll(".wscheduleWaku")) {
-    // 授業ブロックの最初の .wschedule div に時刻が入っている（例: "09:10～10:50"）
-    const timeText = block.querySelector(".wschedule")?.textContent.trim();
-    if (!timeText) continue;
-
-    // "HH:MM～HH:MM" 形式をパースする（全角チルダ ～ に注意）
-    const match = timeText.match(/^(\d{2}):(\d{2})～(\d{2}):(\d{2})$/);
-    if (!match) continue;
-
-    const startMin = parseInt(match[1]) * 60 + parseInt(match[2]);
-    const endMin = parseInt(match[3]) * 60 + parseInt(match[4]);
+    const timeRange = parseClassTimeRange(block);
+    if (!timeRange) continue;
+    const [startMin, endMin] = timeRange;
 
     // 現在時刻が授業時間内かどうかを確認する
     if (nowMinutes >= startMin && nowMinutes <= endMin) {
-      // 授業ブロック内のリンクを走査して「出席パスワード入力」を探す
-      // このリンクは出席管理がある授業にのみ存在する
-      for (const link of block.querySelectorAll("a.jugyo_link_style")) {
-        if (link.textContent.trim() === "出席パスワード入力") {
-          return link;
-        }
+      // 同時刻の複数コマを考慮し、出席リンクがある授業を優先する
+      const attendanceBtn = getAttendanceButtonFromBlock(block);
+      if (attendanceBtn) {
+        return attendanceBtn;
       }
-
-      // 時刻は一致したが出席パスワード入力ボタンがない授業（出席管理なし）
-      return null;
     }
   }
 
@@ -164,7 +186,11 @@ function showCurrentClassPopup() {
   // ただし enter-key-send.js との競合を避けるため、
   // 出席コード送信モーダル（#ibtnOK）がすでに開いている場合はスキップする
   // enter-key-send.js 側が offsetParent チェックで送信ボタンの表示を確認して処理する
-  document.addEventListener("keydown", function (e) {
+  // 前の授業のリスナーを除去してから新しいリスナーを登録する
+  if (_keydownListener) {
+    document.removeEventListener("keydown", _keydownListener);
+  }
+  _keydownListener = function (e) {
     if (e.key !== "Enter") return;
 
     // 出席コード送信モーダルが開いている場合は enter-key-send.js に委ねる
@@ -172,10 +198,81 @@ function showCurrentClassPopup() {
     if (submitBtn && submitBtn.offsetParent !== null) return;
 
     btn.click();
-  });
+  };
+  document.addEventListener("keydown", _keydownListener);
 
   return btn;
 }
 
-// ページ読み込み完了後にポップアップを自動表示する
+// -------------------------------------------------------
+// findNextClassStartMinutes
+// 今日のまだ始まっていない授業のうち最も早い開始時刻を
+// 「0時0分からの通算分」で返す。なければ null を返す
+// -------------------------------------------------------
+function findNextClassStartMinutes() {
+  const now = new Date();
+  const todayStr = `${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
+
+  const headerCells = document.querySelectorAll(
+    "#tabCalender_tabPanelWeek_tblWRowHead td",
+  );
+  let todayColIndex = -1;
+  headerCells.forEach((td, i) => {
+    const link = td.querySelector("a.week_day");
+    if (link && link.textContent.trim().startsWith(todayStr)) {
+      todayColIndex = i;
+    }
+  });
+  if (todayColIndex === -1) return null;
+
+  const dataRow = document.querySelector(
+    "#tabCalender_tabPanelWeek_tblWeek tbody tr:nth-child(2)",
+  );
+  if (!dataRow) return null;
+
+  const todayCell = dataRow.querySelectorAll("td")[todayColIndex];
+  if (!todayCell) return null;
+
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  let nextStart = null;
+
+  for (const block of todayCell.querySelectorAll(".wscheduleWaku")) {
+    const timeRange = parseClassTimeRange(block);
+    if (!timeRange) continue;
+    const [startMin] = timeRange;
+
+    // 未来の授業でも、出席リンクがないコマはスキップする
+    if (!getAttendanceButtonFromBlock(block)) continue;
+
+    if (startMin > nowMinutes && (nextStart === null || startMin < nextStart)) {
+      nextStart = startMin;
+    }
+  }
+  return nextStart;
+}
+
+// -------------------------------------------------------
+// scheduleNextPopup
+// 次の授業開始時刻に showCurrentClassPopup を呼び出すタイマーをセットし、
+// 表示後さらに次の授業を再帰的にスケジュールする
+// -------------------------------------------------------
+function scheduleNextPopup() {
+  const nextStart = findNextClassStartMinutes();
+  if (nextStart === null) return; // 今日の授業はすべて終了
+
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  const delayMs = Math.max(
+    0,
+    midnight.getTime() + nextStart * 60000 - Date.now(),
+  );
+
+  setTimeout(() => {
+    showCurrentClassPopup();
+    scheduleNextPopup();
+  }, delayMs);
+}
+
+// ページ読み込み完了後にポップアップを自動表示し、次の授業もスケジュールする
 showCurrentClassPopup();
+scheduleNextPopup();
