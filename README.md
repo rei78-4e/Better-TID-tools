@@ -54,18 +54,24 @@
 
 ### Firefox
 
-Firefox 128 以降が必要です。Chrome 版とは zip が異なるので、必ず `Better-TID-tools-firefox.zip` を使用してください。
+Firefox 128 以降が必要です。
 
-1. [リリース](https://github.com/Uliboooo/Better-TID-tools/releases)から `Better-TID-tools-firefox.zip` をダウンロードして解凍します。
-2. アドレスバーに `about:debugging#/runtime/this-firefox` と入力して開きます。
-3. **一時的なアドオンを読み込む**（Load Temporary Add-on）をクリックします。
-4. 解凍したフォルダの中の `manifest.json` を選択します。
+1. [リリース](https://github.com/Uliboooo/Better-TID-tools/releases)から `Better-TID-tools-firefox.xpi` をクリックします。
+2. Firefox にインストールの確認が表示されるので、**追加**を選びます。
 
-> [!NOTE]
-> `about:debugging` から読み込んだアドオンは一時的なもので、Firefox を再起動すると消えます。再起動後も残すには、AMO で署名された版が必要です。
+`.xpi` は Mozilla の署名済みなので、Firefox を再起動しても消えません。新しいバージョンがリリースされると Firefox が自動で更新します。
 
 > [!NOTE]
 > 機能が動作しない場合は、`about:addons` から本拡張機能の「権限」を開き、対象サイトへのアクセスが許可されているか確認してください（Firefox ではユーザーが後から取り消せます）。
+
+<details>
+<summary>署名なしの zip を一時的に読み込む場合（開発用）</summary>
+
+1. `Better-TID-tools-firefox.zip` を解凍します。
+2. `about:debugging#/runtime/this-firefox` を開き、**一時的なアドオンを読み込む**から解凍したフォルダの `manifest.json` を選択します。
+
+この方法で読み込んだアドオンは Firefox の再起動で消えます。
+</details>
 
 ### 開発時のパッケージ作成
 
@@ -76,14 +82,16 @@ python scripts/build_packages.py v1.6     # 指定タグから作成
 
 Firefox 版の `manifest.json` は、ビルド時に `manifest.json` へ `browser_specific_settings` を追加して生成されます。
 
-### AMO（Firefox Add-ons）への自動提出
+### Firefox 版の署名（AMO unlisted）
 
-リリース workflow は、Firefox 版を AMO に listed（ストア掲載）として自動提出します。審査は非同期のため、workflow は承認を待たずに終了します。
+リリース workflow は、Firefox 版を AMO（addons.mozilla.org）に unlisted として提出し、署名済みの `.xpi` を受け取って GitHub Release に添付します。AMO のストアには掲載されません。
 
 1. AMO の [API キー管理ページ](https://addons.mozilla.org/developers/addon/api/key/)で JWT issuer と JWT secret を発行します。
-2. GitHub リポジトリの **Settings → Secrets and variables → Actions** に以下を登録します。
+2. GitHub リポジトリの **Settings → Secrets and variables → Actions → Repository secrets** に以下を登録します。
    - `AMO_JWT_ISSUER`: JWT issuer
    - `AMO_JWT_SECRET`: JWT secret
-3. 通常どおりリリースを作成すると、GitHub Release の作成後に AMO へ提出されます。
+3. 通常どおりリリースを作成すると、Release に `Better-TID-tools-firefox.xpi` と `updates.json` が添付されます。
 
-secrets が未登録の場合、AMO への提出はスキップされます。カテゴリ・ライセンス・審査担当者向けメモは `.github/amo-metadata.json` で設定します。同じバージョンは AMO に再提出できないため、workflow を再実行すると提出ステップは失敗します。
+Firefox は `manifest.json` の `update_url`（`releases/latest/download/updates.json`）を定期的に確認し、新しいバージョンがあれば自動で更新します。
+
+secrets が未登録の場合、署名はスキップされ zip のみが公開されます。同じバージョンは AMO に再提出できないため、署名が通ったあとに workflow を再実行すると署名ステップは失敗します。

@@ -48,17 +48,22 @@ def read_blob(repo_root: Path, revision: str, path: str) -> bytes:
     return git_stdout(repo_root, "cat-file", "blob", f"{revision}:{path}")
 
 
-def build_firefox_manifest(chrome_manifest: dict) -> bytes:
+def build_firefox_manifest(chrome_manifest: dict, update_url: str | None) -> bytes:
     if "browser_specific_settings" in chrome_manifest:
         raise ValueError(f"{MANIFEST} must not contain browser_specific_settings.")
+
+    settings = {"gecko": dict(FIREFOX_SETTINGS["gecko"])}
+    if update_url:
+        # Self-distributed (unlisted) builds tell Firefox where to look for updates.
+        settings["gecko"]["update_url"] = update_url
 
     manifest: dict = {}
     for key, value in chrome_manifest.items():
         manifest[key] = value
         # Place the Firefox settings right after the description for readability.
         if key == "description":
-            manifest["browser_specific_settings"] = FIREFOX_SETTINGS
-    manifest.setdefault("browser_specific_settings", FIREFOX_SETTINGS)
+            manifest["browser_specific_settings"] = settings
+    manifest.setdefault("browser_specific_settings", settings)
 
     return (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
@@ -79,6 +84,10 @@ def main() -> int:
     parser.add_argument(
         "--outdir", default=".", help="Directory the zips are written to"
     )
+    parser.add_argument(
+        "--firefox-update-url",
+        help="HTTPS URL of the updates.json that Firefox polls for new versions",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[1]
@@ -94,7 +103,7 @@ def main() -> int:
 
         firefox_entries = dict(chrome_entries)
         firefox_entries[MANIFEST] = build_firefox_manifest(
-            json.loads(chrome_entries[MANIFEST])
+            json.loads(chrome_entries[MANIFEST]), args.firefox_update_url
         )
 
         write_zip(outdir / CHROME_ZIP, chrome_entries)
