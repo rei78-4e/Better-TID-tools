@@ -35,7 +35,7 @@
 
 ### Chrome / Chromium 系
 
-1. [リリース](https://github.com/Uliboooo/Better-TID-tools/releases)から `Better-TID-tools.zip` を解凍します。
+1. [リリース](https://github.com/rei78-4e/Better-TID-tools/releases)から `Better-TID-tools.zip` を解凍します。
 2. Chrome拡張機能の設定を開きます: `chrome://extensions/` またはChrome UI。
 3. 右上のボタンで**開発者モード**をオンにします。
 4. 解凍したフォルダを`load unpacked`ボタンでインポートして使用します。
@@ -56,7 +56,7 @@
 
 Firefox 128 以降が必要です。
 
-1. [リリース](https://github.com/Uliboooo/Better-TID-tools/releases)から `Better-TID-tools-firefox.xpi` をダウンロードします。
+1. [リリース](https://github.com/rei78-4e/Better-TID-tools/releases)から `Better-TID-tools-firefox.xpi` をダウンロードします。
 2. Firefox で `about:addons` を開き、歯車アイコン → **ファイルからアドオンをインストール…** を選んで、ダウンロードした `.xpi` を選択します（`.xpi` を Firefox のウィンドウへドラッグ＆ドロップしても構いません）。
 3. 権限の確認が表示されるので、**追加**を選びます。
 

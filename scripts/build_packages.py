@@ -24,7 +24,7 @@ EXCLUDE_PATTERN = re.compile(r"^(\.github/|scripts/|README\.md$|\.gitignore$|\.g
 # The add-on ID must never change once the extension is published on AMO.
 FIREFOX_SETTINGS = {
     "gecko": {
-        "id": "better-tid-tools@uliboooo.github.io",
+        "id": "better-tid-tools@rei78.cc",
         "strict_min_version": "128.0",
         "data_collection_permissions": {"required": ["none"]},
     }
