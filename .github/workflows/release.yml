@@ -17,6 +17,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-slim
+    env:
+      HAS_AMO_CREDENTIALS: ${{ secrets.AMO_JWT_ISSUER != '' && secrets.AMO_JWT_SECRET != '' }}
     steps:
       - name: Resolve release tag
         id: meta
@@ -95,3 +97,27 @@ jobs:
                 data: fs.readFileSync(assetName),
               });
             }
+
+      # AMO（addons.mozilla.org）へ listed で提出する。審査は非同期なので承認は待たない。
+      # AMO_JWT_ISSUER / AMO_JWT_SECRET が未設定なら提出をスキップする。
+      - name: Set up Node.js for web-ext
+        if: env.HAS_AMO_CREDENTIALS == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Submit Firefox package to AMO
+        if: env.HAS_AMO_CREDENTIALS == 'true'
+        shell: bash
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          mkdir -p firefox-src
+          python -m zipfile -e Better-TID-tools-firefox.zip firefox-src
+          npx --yes web-ext@8.10.0 sign \
+            --source-dir firefox-src \
+            --artifacts-dir web-ext-artifacts \
+            --channel listed \
+            --amo-metadata .github/amo-metadata.json \
+            --approval-timeout 0

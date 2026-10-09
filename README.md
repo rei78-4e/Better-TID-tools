@@ -75,3 +75,15 @@ python scripts/build_packages.py v1.6     # 指定タグから作成
 ```
 
 Firefox 版の `manifest.json` は、ビルド時に `manifest.json` へ `browser_specific_settings` を追加して生成されます。
+
+### AMO（Firefox Add-ons）への自動提出
+
+リリース workflow は、Firefox 版を AMO に listed（ストア掲載）として自動提出します。審査は非同期のため、workflow は承認を待たずに終了します。
+
+1. AMO の [API キー管理ページ](https://addons.mozilla.org/developers/addon/api/key/)で JWT issuer と JWT secret を発行します。
+2. GitHub リポジトリの **Settings → Secrets and variables → Actions** に以下を登録します。
+   - `AMO_JWT_ISSUER`: JWT issuer
+   - `AMO_JWT_SECRET`: JWT secret
+3. 通常どおりリリースを作成すると、GitHub Release の作成後に AMO へ提出されます。
+
+secrets が未登録の場合、AMO への提出はスキップされます。カテゴリ・ライセンス・審査担当者向けメモは `.github/amo-metadata.json` で設定します。同じバージョンは AMO に再提出できないため、workflow を再実行すると提出ステップは失敗します。

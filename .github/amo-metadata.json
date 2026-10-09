@@ -1,0 +1,7 @@
+{
+  "categories": ["other"],
+  "version": {
+    "license": "all-rights-reserved",
+    "approval_notes": "Content scripts only run on the school sites listed in host_permissions (aaaportal.tid.ac.jp, portal.tid.ac.jp, tid.ap.panopto.com, itl/itlexam.jikeigroup.net). No data is collected or sent anywhere. No minified or bundled code; the submitted files are the original sources from the GitHub repository."
+  }
+}
