@@ -7,6 +7,11 @@ on:
         description: Version to release, e.g. 1.6
         required: true
         type: string
+      prerelease:
+        description: Publish as a pre-release (beta)
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -47,6 +52,7 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       tag: ${{ needs.prepare.outputs.tag }}
+      prerelease: ${{ inputs.prerelease }}
     secrets: inherit
     permissions:
       contents: write
