@@ -56,8 +56,9 @@
 
 Firefox 128 以降が必要です。
 
-1. [リリース](https://github.com/Uliboooo/Better-TID-tools/releases)から `Better-TID-tools-firefox.xpi` をクリックします。
-2. Firefox にインストールの確認が表示されるので、**追加**を選びます。
+1. [リリース](https://github.com/Uliboooo/Better-TID-tools/releases)から `Better-TID-tools-firefox.xpi` をダウンロードします。
+2. Firefox で `about:addons` を開き、歯車アイコン → **ファイルからアドオンをインストール…** を選んで、ダウンロードした `.xpi` を選択します（`.xpi` を Firefox のウィンドウへドラッグ＆ドロップしても構いません）。
+3. 権限の確認が表示されるので、**追加**を選びます。
 
 `.xpi` は Mozilla の署名済みなので、Firefox を再起動しても消えません。新しいバージョンがリリースされると Firefox が自動で更新します。
 
