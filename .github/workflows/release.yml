@@ -17,6 +17,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-slim
+    env:
+      HAS_AMO_CREDENTIALS: ${{ secrets.AMO_JWT_ISSUER != '' && secrets.AMO_JWT_SECRET != '' }}
     steps:
       - name: Resolve release tag
         id: meta
@@ -34,32 +36,65 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ steps.meta.outputs.tag }}
+          fetch-depth: 0
 
-      - name: Create release zip
+      - name: Create release zips
         shell: bash
         run: |
-          mapfile -t files < <(
-            git ls-tree -r --name-only "${{ steps.meta.outputs.tag }}" \
-              | grep -Ev '^(\.github/|scripts/|README\.md$|\.gitignore$|\.gitattributes$)'
-          )
-          git archive \
-            --format=zip \
-            --output=Better-TID-tools.zip \
-            "${{ steps.meta.outputs.tag }}" \
-            "${files[@]}"
+          python scripts/build_packages.py "${{ steps.meta.outputs.tag }}" \
+            --firefox-update-url "${{ github.server_url }}/${{ github.repository }}/releases/latest/download/updates.json"
 
-      - name: Create GitHub Release and upload zip
+      # AMO（addons.mozilla.org）で unlisted として署名だけ受け、署名済み xpi を GitHub Release で配布する。
+      # AMO_JWT_ISSUER / AMO_JWT_SECRET が未設定なら署名をスキップし、zip のみ公開する。
+      - name: Set up Node.js for web-ext
+        if: env.HAS_AMO_CREDENTIALS == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Sign Firefox package on AMO
+        if: env.HAS_AMO_CREDENTIALS == 'true'
+        shell: bash
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          python -m zipfile -e Better-TID-tools-firefox.zip firefox-src
+          npx --yes web-ext@8.10.0 sign \
+            --source-dir firefox-src \
+            --artifacts-dir web-ext-artifacts \
+            --channel unlisted \
+            --approval-timeout 1800000
+          mv web-ext-artifacts/*.xpi Better-TID-tools-firefox.xpi
+
+      - name: Create Firefox update manifest
+        if: env.HAS_AMO_CREDENTIALS == 'true'
+        shell: bash
+        env:
+          UPDATE_LINK: ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/Better-TID-tools-firefox.xpi
+        run: |
+          python - <<'PY'
+          import json, os
+          manifest = json.load(open("firefox-src/manifest.json", encoding="utf-8"))
+          addon_id = manifest["browser_specific_settings"]["gecko"]["id"]
+          update = {"version": manifest["version"], "update_link": os.environ["UPDATE_LINK"]}
+          with open("updates.json", "w", encoding="utf-8") as f:
+              json.dump({"addons": {addon_id: {"updates": [update]}}}, f, indent=2)
+          PY
+
+      - name: Create GitHub Release and upload assets
         uses: actions/github-script@v8
         env:
           TAG: ${{ steps.meta.outputs.tag }}
-          ASSET_NAME: Better-TID-tools.zip
+          ASSET_NAMES: Better-TID-tools.zip Better-TID-tools-firefox.zip Better-TID-tools-firefox.xpi updates.json
         with:
           script: |
             const fs = require("fs");
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const tag_name = process.env.TAG;
-            const assetName = process.env.ASSET_NAME;
+            // xpi と updates.json は AMO で署名したときだけ存在する
+            const assetNames = process.env.ASSET_NAMES.split(" ").filter((name) => fs.existsSync(name));
 
             let release;
             try {
@@ -85,7 +120,7 @@ jobs:
             }
 
             for (const asset of release.assets) {
-              if (asset.name === assetName) {
+              if (assetNames.includes(asset.name)) {
                 await github.rest.repos.deleteReleaseAsset({
                   owner,
                   repo,
@@ -94,10 +129,12 @@ jobs:
               }
             }
 
-            await github.rest.repos.uploadReleaseAsset({
-              owner,
-              repo,
-              release_id: release.id,
-              name: assetName,
-              data: fs.readFileSync(assetName),
-            });
+            for (const assetName of assetNames) {
+              await github.rest.repos.uploadReleaseAsset({
+                owner,
+                repo,
+                release_id: release.id,
+                name: assetName,
+                data: fs.readFileSync(assetName),
+              });
+            }
