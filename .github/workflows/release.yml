@@ -10,6 +10,11 @@ on:
         description: Tag to publish
         required: true
         type: string
+      prerelease:
+        description: Publish as a pre-release (beta)
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -86,6 +91,8 @@ jobs:
         uses: actions/github-script@v8
         env:
           TAG: ${{ steps.meta.outputs.tag }}
+          # タグ push で起動した場合は inputs が空なので通常リリースになる
+          PRERELEASE: ${{ inputs.prerelease == true }}
           ASSET_NAMES: Better-TID-tools.zip Better-TID-tools-firefox.zip Better-TID-tools-firefox.xpi updates.json
         with:
           script: |
@@ -114,6 +121,7 @@ jobs:
                   repo,
                   tag_name,
                   name: tag_name,
+                  prerelease: process.env.PRERELEASE === "true",
                   generate_release_notes: true,
                 })
               ).data;

@@ -96,3 +96,10 @@ Firefox 版の `manifest.json` は、ビルド時に `manifest.json` へ `browse
 Firefox は `manifest.json` の `update_url`（`releases/latest/download/updates.json`）を定期的に確認し、新しいバージョンがあれば自動で更新します。
 
 secrets が未登録の場合、署名はスキップされ zip のみが公開されます。同じバージョンは AMO に再提出できないため、署名が通ったあとに workflow を再実行すると署名ステップは失敗します。
+
+### プレリリース（ベータ版）
+
+Actions の **dispatch release** を実行するときに **prerelease** にチェックを入れると、GitHub Release が pre-release として作成されます。
+
+- pre-release は「Latest」にならないため、`releases/latest/download/updates.json` は直前の正式版を指したままです。正式版の利用者にベータ版が自動配信されることはありません。
+- バージョン番号は数字のみです（Chrome・Firefox とも `1.7-beta` のような表記は不可）。AMO では同じバージョンを 2 回署名できないため、ベータ版には正式版より小さい番号を使います（例: ベータ `1.6.90`, `1.6.91` → 正式版 `1.7`）。
