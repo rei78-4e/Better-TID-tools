@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Better-TID-tools",
-  "version": "1.6.90",
-  "description": "簡単なAAA出席入力・確認する機能、portal.tid.ac.jp ログイン自動リダイレクト、IT/DX テスト自動回答、Panopto 字幕ダウンロード を提供します。",
+  "version": "1.6.91",
+  "description": "簡単なAAA出席入力・確認する機能、portal.tid.ac.jp ログイン自動リダイレクト、IT/DX テスト自動回答、Panopto 字幕ダウンロード、manaba 提出ファイル名の確認・変更 を提供します。",
 
   "host_permissions": [
     "https://aaaportal.tid.ac.jp/*",
@@ -48,6 +48,17 @@
     {
       "matches": ["https://tid.ap.panopto.com/*"],
       "js": ["panopto-caption-download.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://tid.manaba.jp/ct/course_*_report*"],
+      "js": ["manaba-file-rename-main.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://tid.manaba.jp/ct/course_*_report*"],
+      "js": ["manaba-file-rename.js"],
       "run_at": "document_idle"
     },
     {
